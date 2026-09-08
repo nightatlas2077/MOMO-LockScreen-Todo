@@ -35,3 +35,7 @@
 - 运行环境：Apple 快捷指令 + iOS 锁屏小组件
 - 界面原型：`resource/reminde_design.html` 为纯 HTML/CSS 实现的锁屏待办界面效果稿，用于预览产品形态
 - 待办支持分组（收集箱 / 项目清单 / 等待清单）、旗标、子任务、紧急标记与截止日期（参照原型设计）
+
+## License
+
+MIT License，详见 [LICENSE](LICENSE)。
