@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>MOMOLOCKTODO V1</title>
+    <style>
+        :root {
+            /* 全局配色 */
+            --bg-color: #F5F5F7;
+            --card-bg: #FFFFFF;
+            --pin-bg: #E3E3E8;
+
+            /* 文本配色 */
+            --text-main: #1D1D1F;
+            --text-sub: #86868B;
+
+            /* 强调色 */
+            --accent-alert: #FF3B30;
+            --accent-blue: #0066CC;
+            --btn-color: #000000;
+
+            /* 结构与特效 */
+            --divider: #E5E5EA;
+            --ai-glow-color: rgba(191, 148, 255, 0.75);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            height: 100dvh;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            -webkit-user-select: none;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- 边缘发光特效 --- */
+        #ai-glow-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 9999;
+            box-shadow: inset 0 0 0px 0px var(--ai-glow-color);
+            opacity: 0;
+        }
+
+        @keyframes ai-flash {
+            0% {
+                box-shadow: inset 0 0 0px 0px var(--ai-glow-color);
+                opacity: 0;
+            }
+
+            20% {
+                box-shadow: inset 0 0 45px 12px var(--ai-glow-color);
+                opacity: 1;
+            }
+
+            100% {
+                box-shadow: inset 0 0 0px 0px var(--ai-glow-color);
+                opacity: 0;
+            }
+        }
+
+        .trigger-ai-glow {
+            animation: ai-flash 0.7s cubic-bezier(0.1, 0.7, 0.1, 1) forwards;
+        }
+
+        /* 抖动动画 */
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            20%,
+            60% {
+                transform: translateX(-4px);
+            }
+
+            40%,
+            80% {
+                transform: translateX(4px);
+            }
+        }
+
+        .shake-animation {
+            animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        }
+
+        /* --- 布局容器 --- */
+        .top-section {
+            flex-shrink: 0;
+            padding: calc(env(safe-area-inset-top, 20px) + 5px) 16px 0 16px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .bottom-section {
+            flex-grow: 1;
+            padding: 10px 16px calc(env(safe-area-inset-bottom, 20px) + 30px) 16px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .full-list-section {
+            flex-grow: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 10px 16px calc(env(safe-area-inset-bottom, 20px) + 30px) 16px;
+            display: none;
+        }
+
+        /* 统一标题头样式 */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 5px 0 10px 0;
+            padding: 0 4px;
+            flex-shrink: 0;
+        }
+
+        .section-header h2 {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            color: var(--text-main);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .count-badge {
+            background: #E5E5EA;
+            color: var(--text-sub);
+            min-width: 28px;
+            height: 22px;
+            border-radius: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 0 8px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* 视图切换按钮 */
+        .toggle-btn {
+            background-color: var(--text-main);
+            color: var(--bg-color);
+            border: none;
+            border-radius: 12px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 0 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        }
+
+        .toggle-btn:active {
+            transform: scale(0.95);
+            opacity: 0.8;
+        }
+
+        /* ================= 新增：胶囊开关样式 (黑色主题) ================= */
+        .capsule-switch {
+            position: relative;
+            width: 36px;
+            height: 20px;
+            background-color: #D1D1D6;
+            /* 未开启时的浅灰色 */
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            margin-left: 10px;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .capsule-switch.active {
+            background-color: #5bd54a;
+            /* 开启时的黑色主题 */
+        }
+
+        .capsule-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            background-color: #FFFFFF;
+            border-radius: 50%;
+            transition: transform 0.2s cubic-bezier(0.3, 1.5, 0.6, 1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .capsule-switch.active::after {
+            transform: translateX(16px);
+        }
+
+        /* --- 列表分类 Tab 滚动栏 --- */
+        .list-selector-scroll {
+            display: flex;
+            flex-shrink: 0;
+            overflow-x: auto;
+            gap: 10px;
+            padding-bottom: 10px;
+            margin-bottom: 2px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        .list-selector-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .list-tab {
+            background-color: var(--pin-bg);
+            color: var(--text-sub);
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .list-tab.active {
+            background-color: var(--text-main);
+            color: var(--bg-color);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* --- 核心卡片容器 (上下复用) --- */
+        .pin-area {
+            background-color: var(--pin-bg);
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            border-radius: 16px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .top-section .pin-area {
+            max-height: 42vh;
+        }
+
+        .bottom-section .pin-area {
+            flex-grow: 1;
+        }
+
+        /* --- 列表区全量视图专属样式 --- */
+        .list-group {
+            margin-bottom: 20px;
+        }
+
+        .list-container {
+            background-color: var(--card-bg);
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+            border: 1px solid rgba(0, 0, 0, 0.03);
+        }
+
+        .inbox-title {
+            color: var(--text-sub);
+            text-transform: uppercase;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: -0.2px;
+        }
+
+        /* 列表项样式 */
+        .todo-item {
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            padding: 12px 14px;
+            background-color: transparent;
+            border-bottom: 0.5px solid rgba(0, 0, 0, 0.05);
+            min-height: 48px;
+            cursor: pointer;
+            transition: background-color 0.15s, transform 0.2s, opacity 0.2s;
+        }
+
+        .todo-item:last-child {
+            border-bottom: none;
+        }
+
+        .full-list-section .todo-item {
+            border-bottom: 0.5px solid var(--divider);
+        }
+
+        .full-list-section .todo-item:last-child {
+            border-bottom: none;
+        }
+
+        .todo-main-row {
+            display: flex;
+            align-items: flex-start;
+            width: 100%;
+        }
+
+        .item-leave {
+            opacity: 0;
+            transform: scale(0.95);
+            pointer-events: none;
+        }
+
+        .item-enter {
+            animation: slideInFade 0.3s cubic-bezier(0.2, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slideInFade {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 复选框 */
+        .checkbox {
+            position: relative;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            margin-right: 10px;
+            border: 1px solid #B0B0B8;
+            border-radius: 50%;
+            margin-top: 1px;
+        }
+
+        .checkbox::before {
+            content: '';
+            position: absolute;
+            top: -15px;
+            bottom: -15px;
+            left: -12px;
+            right: -10px;
+            z-index: 10;
+        }
+
+        .todo-item.completed .checkbox {
+            background-color: var(--accent-blue);
+            border-color: var(--accent-blue);
+        }
+
+        .todo-item.completed .checkbox::after {
+            content: '✓';
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .readonly-checkbox {
+            opacity: 0.3;
+            cursor: default;
+        }
+
+        /* 文本和胶囊样式 */
+        .todo-content {
+            flex-grow: 1;
+            overflow: hidden;
+            padding-right: 8px;
+            pointer-events: none;
+        }
+
+        .todo-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 3px;
+            display: flex;
+            align-items: center;
+        }
+
+        .todo-item.completed .todo-title {
+            text-decoration: line-through;
+            color: var(--text-sub);
+        }
+
+        .meta-row {
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 2px;
+            font-weight: 500;
+            pointer-events: none;
+        }
+
+        .list-name {
+            background-color: #000000;
+            color: #FFFFFF;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            display: inline-block;
+        }
+
+        .date-text {
+            background-color: #EBE0FF;
+            color: #5E2AB2;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: 700;
+        }
+
+        .date-text.alert-text {
+            background-color: #FFE5E5;
+            color: var(--accent-alert) !important;
+        }
+
+        /* 已置顶项特殊展示样式 */
+        .todo-item.already-pinned {
+            padding: 8px 14px;
+            min-height: 40px;
+            background-color: #F8F8F9;
+            border-left: 3px solid #D1D1D6;
+            opacity: 0.9;
+        }
+
+        .todo-item.already-pinned .todo-title {
+            font-size: 13px;
+            color: var(--text-sub);
+        }
+
+        .todo-item.already-pinned .checkbox {
+            width: 16px;
+            height: 16px;
+            margin-top: 0;
+        }
+
+        .todo-item.already-pinned .meta-row {
+            margin-top: 0;
+        }
+
+        .pinned-tag {
+            font-size: 9px;
+            font-weight: 700;
+            color: #86868B;
+            background-color: #E5E5EA;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 8px;
+            flex-shrink: 0;
+        }
+
+        /* 右侧控制区 */
+        .right-actions {
+            display: flex;
+            align-items: center;
+            margin-left: auto;
+        }
+
+        .expand-btn {
+            background-color: rgba(0, 0, 0, 0.06);
+            border-radius: 14px;
+            padding: 6px 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-main);
+            font-size: 13px;
+            font-weight: 600;
+            pointer-events: auto;
+            position: relative;
+        }
+
+        .expand-btn::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            bottom: -10px;
+            left: -10px;
+            right: -10px;
+        }
+
+        .expand-btn .chevron {
+            font-size: 12px;
+            font-weight: 800;
+            opacity: 0.6;
+        }
+
+        .todo-item.locked-date {
+            background-color: rgba(0, 0, 0, 0.04);
+        }
+
+        .empty-slot {
+            pointer-events: none;
+            opacity: 0.5;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            flex-direction: row;
+        }
+
+        .dashed-checkbox {
+            border: 1px dashed #A1A1A8 !important;
+            background: transparent !important;
+            margin: 0;
+        }
+
+        .slot-line {
+            height: 6px;
+            width: 45%;
+            background-color: rgba(0, 0, 0, 0.06);
+            border-radius: 4px;
+            margin-left: 10px;
+        }
+
+        .urgent-mark {
+            color: var(--accent-alert);
+            font-weight: 800;
+            margin-right: 4px;
+        }
+
+        /* 子任务 */
+        .subtasks-container {
+            width: 100%;
+            margin-top: 10px;
+            padding-top: 10px;
+            padding-left: 28px;
+            gap: 8px;
+            border-top: 0.5px solid rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-direction: column;
+            pointer-events: auto;
+        }
+
+        .already-pinned .subtasks-container {
+            padding-top: 8px;
+            margin-top: 8px;
+        }
+
+        .subtask-item {
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .subtask-item.locked-subtask {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .subtask-checkbox {
+            position: relative;
+            width: 16px;
+            height: 16px;
+            border: 1px solid #C6C6C8;
+            border-radius: 4px;
+            margin-right: 10px;
+            margin-top: 1px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .subtask-checkbox::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            bottom: -10px;
+            left: -10px;
+            right: -10px;
+            z-index: 10;
+        }
+
+        .subtask-item.completed .subtask-checkbox {
+            background-color: var(--text-sub);
+            border-color: var(--text-sub);
+        }
+
+        .subtask-item.completed .subtask-checkbox::after {
+            content: '✓';
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .subtask-content-wrapper {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            pointer-events: none;
+        }
+
+        .subtask-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-main);
+            margin-bottom: 2px;
+        }
+
+        .subtask-item.completed .subtask-title {
+            text-decoration: line-through;
+            color: var(--text-sub);
+        }
+
+        .subtask-date {
+            font-size: 9px;
+            color: var(--text-sub);
+        }
+
+
+        /* ================= 操作指南专属样式 ================= */
+
+        .guide-trigger-btn {
+            position: fixed;
+            /* 进一步往下移，减少对列表的遮挡 */
+            bottom: calc(env(safe-area-inset-bottom, 8px) + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: var(--text-sub);
+            /* 内间距改小，字体改小 */
+            padding: 5px 16px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 600;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+            /* 减弱阴影，不那么刺眼 */
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            z-index: 100;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .guide-trigger-btn:active {
+            transform: translateX(-50%) scale(0.95);
+            opacity: 0.8;
+        }
+
+        .guide-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s cubic-bezier(0.2, 1, 0.3, 1);
+        }
+
+        .guide-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .guide-step {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .guide-text {
+            font-size: 12px;
+            line-height: 1.5;
+            background: rgba(0, 0, 0, 0.75);
+            color: #FFFFFF;
+            padding: 10px 14px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            max-width: 210px;
+        }
+
+        .guide-text b {
+            color: #FFD60A;
+        }
+
+        .guide-svg {
+            position: absolute;
+            overflow: visible;
+        }
+
+        .guide-close-btn {
+            position: absolute;
+            bottom: calc(env(safe-area-inset-bottom, 20px) + 30px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1D1D1F;
+            color: #FFFFFF;
+            border: none;
+            padding: 10px 36px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="ai-glow-layer"></div>
+
+    <!-- 上半部分：置顶区 (卡片1) -->
+    <div class="top-section">
+        <div class="section-header">
+            <!-- 修改点：添加切换胶囊开关 (id="switch-card1") -->
+            <h2>
+                <span style="margin-right:8px; font-size:18px;">⚑</span>今日/逾期/标记
+                <div id="switch-card1" class="capsule-switch" onclick="toggleSwitch(1, event)"></div>
+            </h2>
+            <div class="header-actions">
+                <span class="count-badge" id="pin-count">0/10</span>
+                <button class="toggle-btn" id="view-toggle-btn" onclick="toggleListView()">📋 所有清单</button>
+            </div>
+        </div>
+        <div id="pin-area" class="pin-area"></div>
+    </div>
+
+    <!-- 下半部分：列表区 (卡片2) -->
+    <div class="bottom-section" id="bottom-card-section">
+        <div class="section-header">
+            <!-- 修改点：添加切换胶囊开关 (id="switch-card2") -->
+            <h2>
+                <span style="margin-right:8px; font-size:18px;">🗂</span>正在关注
+                <div id="switch-card2" class="capsule-switch" onclick="toggleSwitch(2, event)"></div>
+            </h2>
+            <span class="count-badge" id="list-count">0</span>
+        </div>
+        <div id="list-tabs-container" class="list-selector-scroll"></div>
+        <div id="selected-list-area" class="pin-area"></div>
+    </div>
+
+    <!-- 全量视图：列表区视图 (隐藏状态) -->
+    <div class="full-list-section" id="full-list-section">
+        <div id="lists-wrapper"></div>
+    </div>
+
+
+    <!-- ================= 操作指南悬浮按钮与遮罩 ================= -->
+    <div class="guide-trigger-btn" onclick="showGuide()">💡 操作指南</div>
+
+    <div id="guide-overlay" class="guide-overlay">
+        <svg style="width:0;height:0;position:absolute;">
+            <defs>
+                <marker id="guide-arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6"
+                    orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent-blue)" />
+                </marker>
+            </defs>
+        </svg>
+
+        <div class="guide-content-wrapper">
+            <!-- 1. 引导：指向右上角切换按钮 -->
+            <div class="guide-step"
+                style="top: calc(env(safe-area-inset-top, 20px) + 80px); right: 20px; text-align: right; align-items: flex-end;">
+                <svg class="guide-svg" style="top: -45px; right: 30px; width: 40px; height: 40px;" viewBox="0 0 40 40">
+                    <path d="M20,40 Q20,10 40,5" fill="none" stroke="var(--accent-blue)" stroke-width="2"
+                        stroke-dasharray="4" marker-end="url(#guide-arrowhead)" />
+                </svg>
+                <div class="guide-text">📋 <b>视图切换</b><br>点击在“双卡片编辑”与“所有清单只读”模式间快速切换。</div>
+            </div>
+
+            <!-- 2. 引导：指向置顶区 -->
+            <div class="guide-step" style="top: 26vh; left: 20px;">
+                <div class="guide-text">🚩 <b>置顶区</b><br>点击项目将其移出置顶。<br>标题旁<b>开关</b>可控制是否在桌面显示该卡片。</div>
+                <svg class="guide-svg" style="top: 15px; right: -45px; width: 50px; height: 50px;" viewBox="0 0 50 50">
+                    <path d="M0,25 Q20,25 45,25" fill="none" stroke="var(--accent-blue)" stroke-width="2"
+                        stroke-dasharray="4" marker-end="url(#guide-arrowhead)" />
+                </svg>
+            </div>
+
+            <!-- 3. 引导：指向关注区Tabs -->
+            <div class="guide-step" style="top: 60vh; left: 20px;">
+                <svg class="guide-svg" style="top: -55px; left: 30px; width: 40px; height: 60px;" viewBox="0 0 40 60">
+                    <path d="M10,60 Q10,30 30,5" fill="none" stroke="var(--accent-blue)" stroke-width="2"
+                        stroke-dasharray="4" marker-end="url(#guide-arrowhead)" />
+                </svg>
+                <div class="guide-text">🗂 <b>关注区</b><br>点击Tab切换分组，点击卡片使其移入置顶。<br>已被置顶的任务会缩略显示在底部。</div>
+            </div>
+
+            <!-- 4. 引导：通用功能提示 -->
+            <div class="guide-step"
+                style="bottom: calc(env(safe-area-inset-bottom, 20px) + 90px); left: 50%; transform: translateX(-50%); text-align: center; align-items: center; width: 90%;">
+                <div class="guide-text" style="width: 100%; max-width: 250px;">✅
+                    <b>完成操作</b><br>卡片1和卡片2中点击圆形复选框即可完成/取消任务<br></div>
+            </div>
+        </div>
+
+        <button class="guide-close-btn" onclick="hideGuide()">我知道了</button>
+    </div>
+
+
+    <script>
+        // ================= 数据初始化与参数区 =================
+        const maxTodo = 10;
+
+        let initialPinList = "";
+        let currentPinList = initialPinList;
+
+        // 【新增变量】传入的分类排序参考数组（不在数组里的分类会自动排在最后）
+        let reminderList = ["收集箱@Inbox", "下一步行动@NextAction", "等待清单@Waiting","项目清单@Project", "某某清单@XXX"];
+
+        // 【新增变量】控制卡片状态是否开启（此处为默认值，可由外部初始注入）
+        let enable1Card = true;
+        let enable2Card = true;
+
+        let allGroups = [];
+        let lastMovedId = null;
+        let isFullListView = false;
+
+        // 测试数据
+        let allData = [
+            { "urgent": false, "id": "3DC8AAC3", "due_date": "", "title": "旗标1", "flag": true, "subtasks": [], "create_time": "2026/4/20", "group": "收集箱@Inbox" },
+            { "urgent": false, "id": "00E1AB64", "due_date": "2026/04/20 09:00", "title": "测试2", "flag": false, "subtasks": [], "create_time": "2026/4/20", "group": "收集箱@Inbox" },
+            { "urgent": false, "id": "B61BDDFC", "due_date": "", "title": "测试1", "flag": false, "subtasks": [{ "id": "9599BFE5", "title": "新增一个待办输入ui页面", "completed": false }], "create_time": "2026/4/14", "group": "项目清单@Project" },
+            { "urgent": true, "id": "27242922", "due_date": "", "title": "[P]搭建内容工厂", "flag": false, "subtasks": [{ "id": "CC4E6B51", "title": "调研集成方法", "completed": false }], "create_time": "2026/3/5", "group": "项目清单@Project" },
+            { "urgent": false, "id": "A4BFB363", "due_date": "2026/04/18 00:00", "title": "三个skill项目安装", "flag": false, "subtasks": [], "create_time": "2026/4/11", "group": "等待清单@Waiting" }
+            
+        ];
+        let pinData = [];
+        let listData = [];
+        let initialPinData = [];
+
+        function isDueTodayOrEarlier(dateString) {
+            if (!dateString) return false;
+            const lowerStr = dateString.toLowerCase();
+            if (lowerStr === 'overdue' || lowerStr === 'today') return true;
+            if (lowerStr === 'tomorrow' || lowerStr === 'pending' || lowerStr === 'daily' || lowerStr === 'weekend' || lowerStr === 'this month') return false;
+
+            const parts = dateString.split(' ');
+            if (parts.length < 1) return false;
+            const dateParts = parts[0].split('/');
+            if (dateParts.length !== 3) return false;
+
+            const dueYear = parseInt(dateParts[0], 10);
+            const dueMonth = parseInt(dateParts[1], 10) - 1;
+            const dueDay = parseInt(dateParts[2], 10);
+            const dueDate = new Date(dueYear, dueMonth, dueDay);
+            const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+            return dueDate <= today;
+        }
+
+        function initializeData() {
+            pinData = [];
+            listData = [];
+            const urgentItems = [];
+            const flaggedItems = [];
+
+            allGroups = [...new Set(allData.map(i => i.group))];
+            
+            // 对所有的组进行一次初始排序
+            allGroups.sort((a, b) => {
+                const idxA = reminderList.indexOf(a);
+                const idxB = reminderList.indexOf(b);
+                return (idxA === -1 ? 9999 : idxA) - (idxB === -1 ? 9999 : idxB);
+            });
+
+            // 如果初始传入的分类为空或不存在，默认兜底使用排序后的第一个分类
+            if (!allGroups.includes(initialPinList) && allGroups.length > 0) {
+                initialPinList = allGroups[0];
+            }
+            currentPinList = initialPinList;
+
+            allData.forEach(item => {
+                item._initiallyCompleted = item.completed;
+                if (item.isExpanded === undefined) item.isExpanded = true;
+                if (item.subtasks) {
+                    item.subtasks.forEach(sub => { sub._initiallyCompleted = sub.completed; });
+                }
+
+                if (isDueTodayOrEarlier(item.due_date)) {
+                    urgentItems.push(item);
+                } else if (item.flag) {
+                    flaggedItems.push(item);
+                } else {
+                    listData.push(item);
+                }
+            });
+
+            pinData = [...urgentItems, ...flaggedItems];
+            initialPinData = JSON.parse(JSON.stringify(pinData));
+        }
+
+        initializeData();
+
+        // ================= 指南浮层交互 =================
+        function showGuide() {
+            document.getElementById('guide-overlay').classList.add('show');
+        }
+        function hideGuide() {
+            document.getElementById('guide-overlay').classList.remove('show');
+        }
+
+        // ================= 核心交互逻辑 =================
+        function triggerGlowEffect() {
+            const glowLayer = document.getElementById('ai-glow-layer');
+            glowLayer.classList.remove('trigger-ai-glow');
+            void glowLayer.offsetWidth;
+            glowLayer.classList.add('trigger-ai-glow');
+        }
+
+        function cleanItem(obj) {
+            const clone = { ...obj };
+            delete clone._initiallyCompleted;
+            delete clone.isExpanded;
+            if (clone.subtasks) {
+                clone.subtasks = clone.subtasks.map(sub => {
+                    const subClone = { ...sub };
+                    delete subClone._initiallyCompleted;
+                    return subClone;
+                });
+            }
+            return clone;
+        }
+
+        function syncAndGlow(currentPin, currentList) {
+            const initialPinnedIds = initialPinData.map(i => i.id);
+            const pinned = currentPin.filter(item => !initialPinnedIds.includes(item.id) && !item.completed).map(cleanItem);
+            const removed = currentList.filter(item => initialPinnedIds.includes(item.id)).map(cleanItem);
+
+            const completed = [];
+            [...currentPin, ...currentList].forEach(item => {
+                if (item.completed && !item._initiallyCompleted) {
+                    completed.push(cleanItem(item));
+                }
+                if (item.subtasks && item.subtasks.length > 0) {
+                    item.subtasks.forEach(sub => {
+                        if (sub.completed && !sub._initiallyCompleted) {
+                            completed.push(cleanItem(sub));
+                        }
+                    });
+                }
+            });
+
+            const exportedPinData = currentPin.map(cleanItem);
+            const exportedPinList = (currentPinList !== initialPinList) ? currentPinList : "";
+
+            // 【核心修改】：剪贴板数据新增 enable1Card 和 enable2Card
+            const result = {
+                pinned,
+                removed,
+                completed,
+                pinData: exportedPinData,
+                pinList: exportedPinList,
+                enable1Card,
+                enable2Card
+            };
+            const jsonString = JSON.stringify(result, null, 2);
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(jsonString).then(() => triggerGlowEffect()).catch(() => fallbackCopyTextToClipboard(jsonString));
+            } else { fallbackCopyTextToClipboard(jsonString); }
+        }
+
+        function fallbackCopyTextToClipboard(text) {
+            var textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed"; textArea.style.opacity = "0";
+            document.body.appendChild(textArea);
+            textArea.focus(); textArea.select();
+            try { if (document.execCommand('copy')) triggerGlowEffect(); } catch (err) { }
+            document.body.removeChild(textArea);
+        }
+
+        // ================= 用户操作逻辑 =================
+        function toggleListView() {
+            isFullListView = !isFullListView;
+            render();
+        }
+
+        // 【新增交互】：点击胶囊开关改变状态并同步剪贴板
+        function toggleSwitch(cardNum, e) {
+            e.stopPropagation(); // 阻止事件冒泡
+            if (cardNum === 1) {
+                enable1Card = !enable1Card;
+            } else if (cardNum === 2) {
+                enable2Card = !enable2Card;
+            }
+            syncAndGlow(pinData, listData);
+            render();
+        }
+
+        function handleItemClick(e, id, isPinned) {
+            if (e.target.closest('.checkbox') || e.target.closest('.subtask-checkbox') || e.target.closest('.expand-btn')) return;
+
+            const el = e.currentTarget;
+            const item = isPinned ? pinData.find(i => i.id === id) : listData.find(i => i.id === id);
+            if (!item) return;
+
+            if (isPinned) {
+                if (item.completed) return;
+                if (isDueTodayOrEarlier(item.due_date)) {
+                    el.classList.remove('shake-animation'); void el.offsetWidth; el.classList.add('shake-animation'); return;
+                }
+            } else {
+                if (pinData.length >= maxTodo) {
+                    const targetArea = isFullListView ? document.body : document.getElementById('pin-area');
+                    targetArea.classList.remove('shake-animation'); void targetArea.offsetWidth; targetArea.classList.add('shake-animation'); return;
+                }
+            }
+
+            let newPinData = [...pinData];
+            let newListData = [...listData];
+
+            if (!isPinned) {
+                const idx = newListData.findIndex(i => i.id === id);
+                let moved = newListData.splice(idx, 1)[0];
+                moved.flag = true;
+                newPinData.push(moved);
+            } else {
+                const idx = newPinData.findIndex(i => i.id === id);
+                let moved = newPinData.splice(idx, 1)[0];
+                moved.flag = false;
+                newListData.unshift(moved);
+            }
+
+            syncAndGlow(newPinData, newListData);
+
+            el.style.backgroundColor = isPinned ? 'rgba(0,0,0,0.06)' : '#E5E5EA';
+            setTimeout(() => el.classList.add('item-leave'), 30);
+            setTimeout(() => { pinData = newPinData; listData = newListData; lastMovedId = id; render(); }, 230);
+        }
+
+        function handleExpandToggle(e, id) {
+            e.stopPropagation();
+            const item = pinData.find(i => i.id === id) || listData.find(i => i.id === id);
+            if (item && item.subtasks) {
+                item.isExpanded = !item.isExpanded;
+                render();
+            }
+        }
+
+        function handleToggle(e, id) {
+            e.stopPropagation();
+            const item = pinData.find(i => i.id === id) || listData.find(i => i.id === id);
+            if (item && !item._initiallyCompleted) {
+                item.completed = !item.completed;
+                syncAndGlow(pinData, listData);
+                render();
+            }
+        }
+
+        function handleSubtaskToggle(e, parentId, subtaskId) {
+            e.stopPropagation();
+            const parentItem = pinData.find(i => i.id === parentId) || listData.find(i => i.id === parentId);
+            if (parentItem && parentItem.subtasks) {
+                const subtask = parentItem.subtasks.find(s => s.id === subtaskId);
+                if (subtask && !subtask._initiallyCompleted) {
+                    subtask.completed = !subtask.completed;
+                    syncAndGlow(pinData, listData);
+                    render();
+                }
+            }
+        }
+
+        // ================= 渲染视图 =================
+        function render() {
+            const toggleBtn = document.getElementById('view-toggle-btn');
+            const pinArea = document.getElementById('pin-area');
+            const bottomCard = document.getElementById('bottom-card-section');
+            const fullListArea = document.getElementById('full-list-section');
+
+            // 【UI更新】：动态赋予胶囊开关的 active class 状态
+            const switch1 = document.getElementById('switch-card1');
+            const switch2 = document.getElementById('switch-card2');
+            if (switch1) switch1.className = 'capsule-switch' + (enable1Card ? ' active' : '');
+            if (switch2) switch2.className = 'capsule-switch' + (enable2Card ? ' active' : '');
+
+            if (isFullListView) {
+                // 1. 全量列表模式
+                toggleBtn.innerText = '⚑ 返回卡片';
+                toggleBtn.style.backgroundColor = '#E5E5EA';
+                toggleBtn.style.color = 'var(--text-main)';
+                toggleBtn.style.boxShadow = 'none';
+
+                pinArea.style.display = 'none';
+                bottomCard.style.display = 'none';
+                fullListArea.style.display = 'block';
+
+                const wrapper = document.getElementById('lists-wrapper');
+                wrapper.innerHTML = '';
+
+                const groups = {};
+                const allCurrentData = [...listData, ...pinData];
+                allCurrentData.forEach(item => {
+                    if (!groups[item.group]) groups[item.group] = { unpinned: [], pinned: [] };
+                    if (pinData.includes(item)) {
+                        groups[item.group].pinned.push(item);
+                    } else {
+                        groups[item.group].unpinned.push(item);
+                    }
+                });
+
+                // 【修改排序】：按照 reminderList 的顺序对全量列表的组名进行排序
+                const sortedNames = Object.keys(groups).sort((a, b) => {
+                    const idxA = reminderList.indexOf(a);
+                    const idxB = reminderList.indexOf(b);
+                    const weightA = idxA === -1 ? 9999 : idxA; // 找不到的分类排在最后
+                    const weightB = idxB === -1 ? 9999 : idxB;
+                    return weightA - weightB;
+                });
+
+                sortedNames.forEach(name => {
+                    const groupDiv = document.createElement('div');
+                    groupDiv.className = 'list-group';
+                    groupDiv.innerHTML = `
+                        <div class="section-header" style="margin-top:0;">
+                            <h2 class="inbox-title">${name}</h2>
+                            <span class="count-badge">${groups[name].unpinned.length + groups[name].pinned.length}</span>
+                        </div>
+                        <div class="list-container"></div>
+                    `;
+                    const listContainer = groupDiv.querySelector('.list-container');
+
+                    groups[name].unpinned.forEach(item => listContainer.appendChild(createTodoElement(item, 'fulllist')));
+                    groups[name].pinned.forEach(item => listContainer.appendChild(createTodoElement(item, 'fulllist-pinned')));
+
+                    wrapper.appendChild(groupDiv);
+                });
+
+            } else {
+                // 2. 双卡片模式
+                toggleBtn.innerText = '📋 所有清单';
+                toggleBtn.style.backgroundColor = 'var(--text-main)';
+                toggleBtn.style.color = 'var(--bg-color)';
+                toggleBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.15)';
+
+                pinArea.style.display = 'flex';
+                bottomCard.style.display = 'flex';
+                fullListArea.style.display = 'none';
+
+                // --- 渲染上半部：卡片1 ---
+                document.getElementById('pin-count').innerText = `${pinData.length}/${maxTodo}`;
+                pinArea.innerHTML = '';
+                const renderCount = Math.max(maxTodo, pinData.length);
+                for (let i = 0; i < renderCount; i++) {
+                    if (i < pinData.length) {
+                        pinArea.appendChild(createTodoElement(pinData[i], 'pin'));
+                    } else if (i < maxTodo) {
+                        const slot = document.createElement('div');
+                        slot.className = 'todo-item empty-slot';
+                        slot.innerHTML = `<div class="checkbox dashed-checkbox"></div><div class="slot-line"></div>`;
+                        pinArea.appendChild(slot);
+                    }
+                }
+
+                // --- 渲染下半部：卡片2 Tabs ---
+                const tabsContainer = document.getElementById('list-tabs-container');
+                tabsContainer.innerHTML = '';
+                // 【修改排序】：按照 reminderList 的顺序对横向 Tab 栏进行排序
+                allGroups.sort((a, b) => {
+                    const idxA = reminderList.indexOf(a);
+                    const idxB = reminderList.indexOf(b);
+                    const weightA = idxA === -1 ? 9999 : idxA;
+                    const weightB = idxB === -1 ? 9999 : idxB;
+                    return weightA - weightB;
+                }).forEach(g => {
+                    const btn = document.createElement('div');
+                    btn.className = 'list-tab' + (g === currentPinList ? ' active' : '');
+                    btn.innerText = g;
+                    btn.onclick = () => {
+                        currentPinList = g;
+                        syncAndGlow(pinData, listData);
+                        render();
+                    };
+                    tabsContainer.appendChild(btn);
+                });
+
+                // --- 渲染下半部：卡片2 选中的内容 ---
+                const listContainer = document.getElementById('selected-list-area');
+                listContainer.innerHTML = '';
+
+                const unpinnedItemsToRender = listData.filter(i => i.group === currentPinList);
+                const pinnedItemsToRender = pinData.filter(i => i.group === currentPinList);
+
+                document.getElementById('list-count').innerText = `${unpinnedItemsToRender.length + pinnedItemsToRender.length}`;
+
+                if (unpinnedItemsToRender.length === 0 && pinnedItemsToRender.length === 0) {
+                    const emptyMsg = document.createElement('div');
+                    emptyMsg.style.padding = '40px 20px'; emptyMsg.style.textAlign = 'center';
+                    emptyMsg.style.color = 'var(--text-sub)'; emptyMsg.style.fontSize = '14px'; emptyMsg.style.fontWeight = '500';
+                    emptyMsg.innerText = '当前列表为空';
+                    listContainer.appendChild(emptyMsg);
+                } else {
+                    unpinnedItemsToRender.forEach(item => {
+                        listContainer.appendChild(createTodoElement(item, 'card2'));
+                    });
+                    pinnedItemsToRender.forEach(item => {
+                        listContainer.appendChild(createTodoElement(item, 'already-pinned'));
+                    });
+                }
+            }
+        }
+
+        // HTML 卡片构造函数
+        function createTodoElement(item, mode) {
+            const isTopPinArea = (mode === 'pin');
+            const isActuallyPinned = (mode === 'pin' || mode === 'already-pinned' || mode === 'fulllist-pinned');
+            const isAlreadyPinnedInList = (mode === 'already-pinned' || mode === 'fulllist-pinned');
+
+            const div = document.createElement('div');
+
+            const isLockedDate = isDueTodayOrEarlier(item.due_date);
+            const lockedClass = isLockedDate && isActuallyPinned ? 'locked-date' : '';
+            const isOverdueAlert = item.due_date.toLowerCase() === 'overdue' || isLockedDate;
+            const dateAlertClass = isOverdueAlert ? 'alert-text' : '';
+
+            div.className = `todo-item ${item.completed ? 'completed' : ''} ${lockedClass} ${isAlreadyPinnedInList ? 'already-pinned' : ''}`;
+            if (item.id === lastMovedId) { div.classList.add('item-enter'); lastMovedId = null; }
+
+            div.onclick = (e) => handleItemClick(e, item.id, isActuallyPinned);
+
+            // ================= 权限控制：判断复选框是否只读 =================
+            const isReadOnly = mode.startsWith('fulllist');
+            const checkboxClickAction = isReadOnly ? 'event.stopPropagation()' : `handleToggle(event, '${item.id}')`;
+            const checkboxClass = `checkbox ${isReadOnly ? 'readonly-checkbox' : ''}`;
+
+            let rightActionsHtml = '';
+            if (item.subtasks && item.subtasks.length > 0) {
+                const completedSubCount = item.subtasks.filter(s => s.completed).length;
+                const chevron = item.isExpanded ? '⌃' : '⌄';
+                rightActionsHtml = `
+                    <div class="right-actions">
+                        <div class="expand-btn" onclick="handleExpandToggle(event, '${item.id}')">
+                            <span>${completedSubCount}/${item.subtasks.length}</span>
+                            <span class="chevron">${chevron}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            let subtasksHtml = '';
+            if (item.subtasks && item.subtasks.length > 0 && item.isExpanded) {
+                subtasksHtml = '<div class="subtasks-container">';
+                item.subtasks.forEach(sub => {
+                    const isSubOverdueAlert = (sub.due_date && sub.due_date.toLowerCase() === 'overdue') || isDueTodayOrEarlier(sub.due_date);
+                    const lockedSubClass = sub._initiallyCompleted ? 'locked-subtask' : '';
+                    const subCheckboxClickAction = isReadOnly ? 'event.stopPropagation()' : `handleSubtaskToggle(event, '${item.id}', '${sub.id}')`;
+
+                    subtasksHtml += `
+                        <div class="subtask-item ${sub.completed ? 'completed' : ''} ${lockedSubClass}">
+                            <div class="subtask-checkbox ${isReadOnly ? 'readonly-checkbox' : ''}" onclick="${subCheckboxClickAction}"></div>
+                            <div class="subtask-content-wrapper">
+                                <div class="subtask-title">${sub.title}</div>
+                                ${sub.due_date ? `<div class="subtask-date ${isSubOverdueAlert ? 'alert-text' : ''}">${sub.due_date}</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                subtasksHtml += '</div>';
+            }
+
+            const pinnedBadgeHtml = isAlreadyPinnedInList ? `<span class="pinned-tag">已置顶</span>` : '';
+
+            div.innerHTML = `
+                <div class="todo-main-row">
+                    <div class="${checkboxClass}" onclick="${checkboxClickAction}"></div>
+                    <div class="todo-content">
+                        <div class="todo-title">${item.urgent ? '<span class="urgent-mark">!</span>' : ''}${item.title}${pinnedBadgeHtml}</div>
+                        <div class="meta-row">
+                            <span class="list-name" style="${isTopPinArea ? '' : 'display:none'}">${item.group}</span>
+                            <span class="date-text ${dateAlertClass}" style="${item.due_date ? '' : 'display:none'}">${item.due_date}</span>
+                        </div>
+                    </div>
+                    ${rightActionsHtml}
+                </div>
+                ${subtasksHtml}
+            `;
+            return div;
+        }
+
+        render();
+    </script>
+</body>
+
+</html>
